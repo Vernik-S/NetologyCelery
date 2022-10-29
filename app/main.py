@@ -179,17 +179,19 @@ class AdvView(MethodView):
 class MassMailView(MethodView):
 
     def post(self):
-        json_data_validated = validate(UpdateAdvSchema, request.json)
-        sender = json_data_validated ['sender']
-        fltr = json_data_validated['filter']
+        json_data_validated = validate(MassMailSchema, request.json)
+        sender = json_data_validated['sender']
+        fltr = json_data_validated.get('filter', '')
         msg = json_data_validated['msg']
         with Session() as session:
-            users = get_users(session, json_data_validated['filter'])
+            users = get_users(session, fltr)
             results = []
             with smtplib.SMTP('127.0.0.1', 3000) as server:
                 for user in users:
                     res = send_mail(sender, user.email, msg, server)
                     results.append([res, user.email])
+
+        return jsonify(results)
 
 
 
@@ -206,5 +208,5 @@ class MassMailView(MethodView):
 app.add_url_rule("/advs/", methods=["POST"], view_func=AdvView.as_view("create_adv"))
 app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_func=AdvView.as_view("get_adv"))
 
-app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_adv"))
+app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_mass_mail"))
 app.run(debug=True)

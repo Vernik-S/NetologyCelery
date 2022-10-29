@@ -2,8 +2,8 @@ import requests
 
 # response = requests.get("http://127.0.0.1:5000/test?param=value", json= {"key": "value"}, headers={"token": "aaa"})
 
-response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 55555 ", "desc": "description", "owner":"user1"},
-                      headers={"token": "aaa"})
+# response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 55555 ", "desc": "description", "owner":"user1"},
+#                       headers={"token": "aaa"})
 
 # response = requests.patch("http://127.0.0.1:5000/advs/2", json={"title": "edit_title 55555", "desc": "edit description", "owner":"user1"},
 #                         headers={"token": "aaa"})
@@ -16,6 +16,9 @@ response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_tit
 # response = requests.get("http://127.0.0.1:5000/advs/2")
 
 #response = requests.delete("http://127.0.0.1:5000/advs/3")
+
+response = requests.post("http://127.0.0.1:5000/mass_mail/",
+                         json={"sender": "mass_sender@aa.aa",  "msg": "Mass message"},)
 
 print(response.status_code)
 print(response.text)

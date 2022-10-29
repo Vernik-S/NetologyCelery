@@ -7,6 +7,7 @@ version: '3.9'
 
 volumes:
   smtp4dev-data:
+  db_volume:
 
 services:
 
@@ -18,6 +19,8 @@ services:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: netology_flask
+    volumes:
+      - db_volume:/var/lib/postgresql
 
     #networks:
     #  dev_network:
