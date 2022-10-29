@@ -20,7 +20,7 @@ import requests
 #response = requests.delete("http://127.0.0.1:5000/advs/3")
 
 response = requests.post("http://127.0.0.1:5000/mass_mail/",
-                         json={"sender": "mass_sender@aa.aa",  "msg": "Mass message", "filter" : "qqq"},)
+                         json={"sender": "mass_sender@aa.aa",  "msg": "Mass message",},)
 
 print(response.status_code)
 print(response.text)

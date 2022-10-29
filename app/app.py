@@ -1,4 +1,5 @@
 import atexit
+import os
 import smtplib
 from typing import Union, Optional
 
@@ -14,7 +15,7 @@ import pydantic
 
 from celery_app import send_mail, celery_app, get_task
 
-DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
+DSN = DSN = os.getenv("PG_DSN", default="postgresql://app:1234@127.0.0.1:5431/netology_flask")
 
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
@@ -24,6 +25,7 @@ Base = declarative_base()
 atexit.register(lambda: engine.dispose())
 
 celery_app.conf.update(app.config)
+
 
 class ContextTask(celery_app.Task):
     def __call__(self, *args, **kwargs):
@@ -78,7 +80,8 @@ def get_user(user_name: str, session: Session) -> User:
         raise HTTPError(400, f"user {user_name} not found ")
     return user
 
-def get_users(session: Session, fltr: Optional[str]='', ) -> User:
+
+def get_users(session: Session, fltr: Optional[str] = '', ) -> User:
     result = session.execute(select(User).filter(User.nickname.like(f'%{fltr}%')))
     users = result.scalars().all()
     # print(user)
@@ -124,11 +127,11 @@ class UpdateAdvSchema(pydantic.BaseModel):
 
         return value
 
+
 class MassMailSchema(pydantic.BaseModel):
     msg: str
     sender: EmailStr
     filter: Optional[str]
-
 
 
 def validate(Schema, data: dict):
@@ -196,18 +199,17 @@ class MassMailView(MethodView):
         with Session() as session:
             users = get_users(session, fltr)
             results = []
-            #with smtplib.SMTP('127.0.0.1', 3000) as server:
+            # with smtplib.SMTP('127.0.0.1', 3000) as server:
             for user in users:
-                task = send_mail.delay(sender, user.email, msg,)
+                task = send_mail.delay(sender, user.email, msg, )
 
                 results.append([task.id, user.email])
 
-        return jsonify(results) #возвращает список, в котором для каждого адреса пользователя возращается ид таски
+        return jsonify(results)  # возвращает список, в котором для каждого адреса пользователя возращается ид таски
 
     def get(self, task_id):
         task = get_task(task_id)
         return jsonify({"status": task.status, "result": task.result})
-
 
 
 # def test():
@@ -225,4 +227,5 @@ app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_
 
 app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_mass_mail"))
 app.add_url_rule("/mass_mail/<string:task_id>", methods=["GET"], view_func=MassMailView.as_view("read_mass_mail"))
-app.run(debug=True)
+
+#app.run(debug=True)
