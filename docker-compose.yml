@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: netology_flask
     volumes:
-      - db_volume:/var/lib/postgresql
+      - db_volume:/var/lib/postgresql/data
 
     #networks:
     #  dev_network:
@@ -32,11 +32,14 @@ services:
       context: .
     environment:
       PG_DSN: postgresql+asyncpg://app:1234@db:5432/netology_flask
+      CELERY_BROKER: "redis://redis:6379/1"
+      CELERY_BACKEND: "redis://redis:6379/2"
     ports:
       - "8080:8080"
     depends_on:
       - db
       - smtp4dev
+
     #networks:
     #  dev_network:
     #    aliases:
@@ -47,8 +50,18 @@ services:
       - ./app:/app
     working_dir: /app
     entrypoint: sh ./run.sh
-    #entrypoint: python3 main.py
-    #entrypoint: PYTHONUNBUFFERED=TRUE gunicorn -b 0.0.0.0:5000 main:app --capture-output
+
+
+
+  redis:
+    image: redis:7.0.0-alpine3.15
+    ports:
+      - "6379:6379"
+    depends_on:
+      - db
+
+  
+
 
   smtp4dev:
     image: rnwood/smtp4dev:v3

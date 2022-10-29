@@ -1,3 +1,5 @@
+import time
+
 import requests
 
 # response = requests.get("http://127.0.0.1:5000/test?param=value", json= {"key": "value"}, headers={"token": "aaa"})
@@ -18,7 +20,25 @@ import requests
 #response = requests.delete("http://127.0.0.1:5000/advs/3")
 
 response = requests.post("http://127.0.0.1:5000/mass_mail/",
-                         json={"sender": "mass_sender@aa.aa",  "msg": "Mass message"},)
+                         json={"sender": "mass_sender@aa.aa",  "msg": "Mass message", "filter" : "qqq"},)
 
 print(response.status_code)
 print(response.text)
+#print(response.json())
+
+first_id = response.json()[0][0]
+
+status = ""
+
+while status != "SUCCESS":
+    time.sleep(0.5)
+    response = requests.get(f"http://127.0.0.1:5000/mass_mail/{first_id}",)
+
+    #print(response.status_code)
+    #print(response.text)
+    data = response.json()
+    status = data["status"]
+    result = data["result"]
+
+    print(status, result)
+

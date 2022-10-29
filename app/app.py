@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import sessionmaker
 import pydantic
 
-from app.celery_app import send_mail
+from celery_app import send_mail, celery_app, get_task
 
 DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
 
@@ -22,6 +22,16 @@ Session = sessionmaker(bind=engine)
 app = Flask("server")
 Base = declarative_base()
 atexit.register(lambda: engine.dispose())
+
+celery_app.conf.update(app.config)
+
+class ContextTask(celery_app.Task):
+    def __call__(self, *args, **kwargs):
+        with app.app_context():
+            return self.run(*args, **kwargs)
+
+
+celery_app.Task = ContextTask
 
 
 class User(Base):
@@ -72,7 +82,7 @@ def get_users(session: Session, fltr: Optional[str]='', ) -> User:
     result = session.execute(select(User).filter(User.nickname.like(f'%{fltr}%')))
     users = result.scalars().all()
     # print(user)
-    if users is None:
+    if not users:
         raise HTTPError(400, f"No users with filter {fltr} were found ")
     return users
 
@@ -186,12 +196,17 @@ class MassMailView(MethodView):
         with Session() as session:
             users = get_users(session, fltr)
             results = []
-            with smtplib.SMTP('127.0.0.1', 3000) as server:
-                for user in users:
-                    res = send_mail(sender, user.email, msg, server)
-                    results.append([res, user.email])
+            #with smtplib.SMTP('127.0.0.1', 3000) as server:
+            for user in users:
+                task = send_mail.delay(sender, user.email, msg,)
 
-        return jsonify(results)
+                results.append([task.id, user.email])
+
+        return jsonify(results) #возвращает список, в котором для каждого адреса пользователя возращается ид таски
+
+    def get(self, task_id):
+        task = get_task(task_id)
+        return jsonify({"status": task.status, "result": task.result})
 
 
 
@@ -209,4 +224,5 @@ app.add_url_rule("/advs/", methods=["POST"], view_func=AdvView.as_view("create_a
 app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_func=AdvView.as_view("get_adv"))
 
 app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_mass_mail"))
+app.add_url_rule("/mass_mail/<string:task_id>", methods=["GET"], view_func=MassMailView.as_view("read_mass_mail"))
 app.run(debug=True)
