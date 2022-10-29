@@ -6,7 +6,7 @@ from email.mime.text import MIMEText
 from celery import Celery
 from celery.result import AsyncResult
 
-from config import CELERY_BROKER, CELERY_BACKEND
+from config import CELERY_BROKER, CELERY_BACKEND, smtp_serv, smtp_port
 
 celery_app = Celery("app", backend=CELERY_BACKEND, broker=CELERY_BROKER)
 
@@ -16,8 +16,7 @@ def get_task(task_id: str) -> AsyncResult:
 
 @celery_app.task
 def send_mail(sender, recipient, msg):
-    smtp_serv = os.getenv("SMTP_SERVER", default="127.0.0.1")
-    smtp_port = os.getenv("SMTP_PORT", default=3000)
+
     with smtplib.SMTP(smtp_serv, smtp_port) as server:
         mail = MIMEText(msg)
         mail['Subject'] = "Message about your adv"
@@ -29,8 +28,7 @@ def send_mail(sender, recipient, msg):
     return f'Message for {recipient} is sent'
 
 def test_send():
-    smtp_serv = os.getenv("SMTP_SERVER", default="127.0.0.1")
-    smtp_port = os.getenv("SMTP_PORT", default=3000)
+
     with smtplib.SMTP(smtp_serv, smtp_port) as server:
         mail = MIMEText("test send")
         mail['Subject'] = "test_send"

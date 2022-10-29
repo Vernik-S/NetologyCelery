@@ -13,9 +13,10 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import sessionmaker
 import pydantic
 
+from config import run_from_docker, DSN
 from celery_app import send_mail, celery_app, get_task
 
-DSN = DSN = os.getenv("PG_DSN", default="postgresql://app:1234@127.0.0.1:5431/netology_flask")
+
 
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
@@ -227,5 +228,5 @@ app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_
 
 app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_mass_mail"))
 app.add_url_rule("/mass_mail/<string:task_id>", methods=["GET"], view_func=MassMailView.as_view("read_mass_mail"))
-
-#app.run(debug=True)
+if not run_from_docker:
+    app.run(debug=True)
