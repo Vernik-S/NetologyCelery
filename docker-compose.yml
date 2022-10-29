@@ -60,7 +60,7 @@ services:
     depends_on:
       - db
 
-  
+
 
 
   smtp4dev:
