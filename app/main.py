@@ -1,13 +1,18 @@
 import atexit
+import smtplib
 from typing import Union, Optional
 
 from flask import Flask, jsonify, request
 from flask.views import MethodView
+from pydantic import EmailStr
 from sqlalchemy import Column, Integer, String, DateTime, func, create_engine, ForeignKey
+from sqlalchemy.future import select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import sessionmaker
 import pydantic
+
+from app.celery_app import send_mail
 
 DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
 
@@ -63,6 +68,14 @@ def get_user(user_name: str, session: Session) -> User:
         raise HTTPError(400, f"user {user_name} not found ")
     return user
 
+def get_users(session: Session, fltr: Optional[str]='', ) -> User:
+    result = session.execute(select(User).filter(User.nickname.like(f'%{fltr}%')))
+    users = result.scalars().all()
+    # print(user)
+    if users is None:
+        raise HTTPError(400, f"No users with filter {fltr} were found ")
+    return users
+
 
 # убрать дублирование get?
 def get_adv(adv_id: int, session: Session) -> Adv:
@@ -100,6 +113,12 @@ class UpdateAdvSchema(pydantic.BaseModel):
             raise ValueError("title is too long")
 
         return value
+
+class MassMailSchema(pydantic.BaseModel):
+    msg: str
+    sender: EmailStr
+    filter: Optional[str]
+
 
 
 def validate(Schema, data: dict):
@@ -157,6 +176,23 @@ class AdvView(MethodView):
         return jsonify(f"Adv wit id {adv_id} deleted")
 
 
+class MassMailView(MethodView):
+
+    def post(self):
+        json_data_validated = validate(UpdateAdvSchema, request.json)
+        sender = json_data_validated ['sender']
+        fltr = json_data_validated['filter']
+        msg = json_data_validated['msg']
+        with Session() as session:
+            users = get_users(session, json_data_validated['filter'])
+            results = []
+            with smtplib.SMTP('127.0.0.1', 3000) as server:
+                for user in users:
+                    res = send_mail(sender, user.email, msg, server)
+                    results.append([res, user.email])
+
+
+
 # def test():
 #     data = request.json
 #     headers = request.headers
@@ -169,4 +205,6 @@ class AdvView(MethodView):
 
 app.add_url_rule("/advs/", methods=["POST"], view_func=AdvView.as_view("create_adv"))
 app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_func=AdvView.as_view("get_adv"))
+
+app.add_url_rule("/mass_mail/", methods=["POST"], view_func=MassMailView.as_view("create_adv"))
 app.run(debug=True)
